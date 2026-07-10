@@ -36,7 +36,13 @@ def test_create_notes_plan_uses_fs_write_and_approval():
     assert plan.tool_calls[0].requires_approval
 
 
+def test_recall_memory_plan_uses_memory_recall_only():
+    plan = build_plan(Intent.RECALL_MEMORY, "what did I work on recently")
+    assert len(plan.tool_calls) == 1
+    assert plan.tool_calls[0].tool == "memory.recall"
+    assert plan.tool_calls[0].risk_tier == "T0"
+
+
 def test_unknown_plan_has_no_tool_calls():
     plan = build_plan(Intent.UNKNOWN, "unsupported request")
     assert plan.tool_calls == []
-

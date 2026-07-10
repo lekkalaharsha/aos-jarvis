@@ -1,48 +1,50 @@
 # Phase Contract
 
-## Active Phase: Phase 3 - Minimal Agent Loop
+## Active Phase: Phase 4 - Memory System
 
 ## Phase Goal
 
-Implement a deterministic agent loop that classifies a small set of user intents, proposes structured tool calls, validates them, and executes them only through the existing safe file and safe shell tools.
+Implement a local, deterministic memory system derived from the append-only audit log. Memory is rebuildable, read-only at query time, and used for timeline and recall features without bypassing any existing safety boundaries.
 
 ## Allowed Work
 
-- Maintain all Phase 0, Phase 1, and Phase 2 behavior.
-- Implement deterministic intent classification and rule-based planning.
-- Implement a structured tool registry that delegates only to existing safe tools.
-- Implement the `aos ask` CLI command and supporting tests/docs.
-- Add agent audit events for request, plan, tool preview/apply, blocked, and result.
+- Maintain all Phase 0, Phase 1, Phase 2, and Phase 3 behavior.
+- Implement SQLite-backed derived memory tables for events, entities, and timeline entries.
+- Implement memory rebuild/index logic from audit events.
+- Implement `aos memory ...` and `aos recall ...` CLI commands.
+- Add minimal read-only memory recall integration to the Phase 3 agent.
+- Add audit events for memory rebuild, index, query, and recall.
 
 ## Forbidden Work
 
-The following remain forbidden in Phase 3:
+The following remain forbidden in Phase 4:
 
-- memory system
 - voice
 - dashboard
 - browser automation
 - screen understanding
 - model router
 - multi-agent system
-- unrestricted shell access
-- arbitrary filesystem access
-- direct subprocess use by the agent
-- direct file reads/writes by the agent
-- cloud model integration beyond a minimal local adapter interface
+- embeddings or vector databases
+- cloud memory
+- autonomous workflows
+- unrestricted file or shell access
 
 ## Exit Criteria
 
-- Existing Phase 0, Phase 1, and Phase 2 tests still pass.
-- Phase 3 intent, planner, registry, loop, CLI, and safety tests pass.
-- `aos ask --dry-run "run tests"` works.
-- `aos ask "summarize this project"` works.
-- `aos ask "find TODOs"` works.
-- `aos ask "show git status"` works.
-- `aos ask "run tests"` requires approval.
-- `aos ask "read .env"` is blocked.
-- Unknown requests execute no tools.
-- Agent audit events are written and audit verification still passes.
+- All existing Phase 0, Phase 1, Phase 2, and Phase 3 tests still pass.
+- Phase 4 store, indexer, timeline, recall, CLI, and safety tests pass.
+- `aos memory status` works.
+- `aos memory rebuild` works.
+- `aos memory recent` works.
+- `aos memory timeline` works.
+- `aos memory commands` works.
+- `aos memory failures` works.
+- `aos recall "what did I work on recently"` works.
+- Agent memory recall uses only memory tools.
+- Memory rebuild is idempotent.
+- Secrets are redacted from derived memory and memory audit payloads.
+- Audit verification still passes.
 
 ## Agent Rule
 

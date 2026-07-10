@@ -5,6 +5,10 @@ from pathlib import Path
 from typing import Any, Callable
 
 from aos.agent.types import Observation, ToolCall
+from aos.memory.recall import recall
+from aos.memory.store import DEFAULT_MEMORY_DB_PATH, get_memory_status
+from aos.memory.timeline import get_recent_activity
+from aos.safety.audit import DEFAULT_AUDIT_PATH
 from aos.safety.command_policy import evaluate_command
 from aos.safety.errors import PermissionBlocked
 from aos.safety.risk import RiskTier, classify_file_action
@@ -122,6 +126,42 @@ class ToolRegistry:
                 self._resolve_command_approval,
                 self._preview_run_apply,
                 self._execute_run_apply,
+            ),
+            "memory.status": ToolSpec(
+                "memory.status",
+                frozenset(),
+                frozenset(),
+                lambda args, cwd: "T0",
+                lambda args, cwd: False,
+                self._preview_memory_status,
+                self._execute_memory_status,
+            ),
+            "memory.recent": ToolSpec(
+                "memory.recent",
+                frozenset(),
+                frozenset({"limit"}),
+                lambda args, cwd: "T0",
+                lambda args, cwd: False,
+                self._preview_memory_recent,
+                self._execute_memory_recent,
+            ),
+            "memory.timeline": ToolSpec(
+                "memory.timeline",
+                frozenset(),
+                frozenset({"limit"}),
+                lambda args, cwd: "T0",
+                lambda args, cwd: False,
+                self._preview_memory_timeline,
+                self._execute_memory_timeline,
+            ),
+            "memory.recall": ToolSpec(
+                "memory.recall",
+                frozenset({"query"}),
+                frozenset({"limit"}),
+                lambda args, cwd: "T0",
+                lambda args, cwd: False,
+                self._preview_memory_recall,
+                self._execute_memory_recall,
             ),
         }
 
@@ -319,7 +359,39 @@ class ToolRegistry:
             },
         )
 
+    def _preview_memory_status(self, args: dict[str, Any], cwd: Path) -> Observation:
+        return Observation("memory.status", True, "Inspect memory store status.")
+
+    def _execute_memory_status(self, args: dict[str, Any], cwd: Path, yes: bool) -> Observation:
+        status = get_memory_status(db_path=DEFAULT_MEMORY_DB_PATH)
+        return Observation("memory.status", True, "Loaded memory status.", {"status": status})
+
+    def _preview_memory_recent(self, args: dict[str, Any], cwd: Path) -> Observation:
+        return Observation("memory.recent", True, "Read recent memory activity.")
+
+    def _execute_memory_recent(self, args: dict[str, Any], cwd: Path, yes: bool) -> Observation:
+        entries = get_recent_activity(limit=int(args.get("limit", 10)), db_path=DEFAULT_MEMORY_DB_PATH)
+        return Observation("memory.recent", True, f"Loaded {len(entries)} recent memory entries.", {"entries": entries})
+
+    def _preview_memory_timeline(self, args: dict[str, Any], cwd: Path) -> Observation:
+        return Observation("memory.timeline", True, "Read memory timeline.")
+
+    def _execute_memory_timeline(self, args: dict[str, Any], cwd: Path, yes: bool) -> Observation:
+        entries = get_recent_activity(limit=int(args.get("limit", 20)), db_path=DEFAULT_MEMORY_DB_PATH)
+        return Observation("memory.timeline", True, f"Loaded {len(entries)} timeline entries.", {"entries": entries})
+
+    def _preview_memory_recall(self, args: dict[str, Any], cwd: Path) -> Observation:
+        return Observation("memory.recall", True, f"Recall memory for query: {args['query']}")
+
+    def _execute_memory_recall(self, args: dict[str, Any], cwd: Path, yes: bool) -> Observation:
+        result = recall(
+            str(args["query"]),
+            limit=int(args.get("limit", 10)),
+            db_path=DEFAULT_MEMORY_DB_PATH,
+            audit_path=DEFAULT_AUDIT_PATH,
+        )
+        return Observation("memory.recall", True, "Memory recall completed.", {"summary": result.summary, "result": result})
+
 
 def default_registry() -> ToolRegistry:
     return ToolRegistry()
-

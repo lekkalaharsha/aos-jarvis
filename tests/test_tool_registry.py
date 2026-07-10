@@ -38,3 +38,8 @@ def test_direct_filesystem_tool_is_rejected(tmp_path):
     with pytest.raises(PermissionBlocked):
         registry.validate(call, cwd=tmp_path)
 
+
+def test_memory_recall_tool_is_accepted(tmp_path):
+    registry = default_registry()
+    call = ToolCall("memory.recall", {"query": "what did I work on recently", "limit": 5}, "T0", False)
+    registry.validate(call, cwd=tmp_path)

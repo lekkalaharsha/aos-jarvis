@@ -1,6 +1,6 @@
 # Project State
 
-Current phase: Phase 3 — Minimal Agent Loop, IN PROGRESS (builder: Codex). Phases 0–2 are COMPLETE + HARDENED (2026-07-10).
+Current phase: Phase 4 — Memory System, COMPLETE + REVIEWED (2026-07-10). Phases 0–3 are COMPLETE + HARDENED. Phase 5 is NOT STARTED.
 
 ## Completed
 
@@ -31,15 +31,19 @@ Current phase: Phase 3 — Minimal Agent Loop, IN PROGRESS (builder: Codex). Pha
 - **Phase 2 — Docs**: `docs/phase_2.md`, `docs/command_runner.md`, updated `docs/risk_tiers.md`.
 - **Phase 2 — Verified** (2026-07-10): full suite green — 133 passed, 2 skipped (benign platform skips); declared COMPLETE + HARDENED by Human Owner.
 
+- **Phase 3 — Minimal agent loop**: deterministic intent classifier, structured plan/tool-call dataclasses, allowlisted tool registry, dry-run mode, approval stop, safe delegation to Phase 1 file tools and Phase 2 shell runner, audit events for agent actions. No real LLM required. Allowed intents: PROJECT_SUMMARY, FIND_TODOS, RUN_TESTS, GIT_STATUS, READ_FILE, CREATE_NOTES, UNKNOWN.
+
+- **Phase 4 — Memory system**: local SQLite memory store derived from the append-only audit log. Full rebuild/index with idempotent event processing. Timeline queries, entity tracking, and deterministic rule-based recall. CLI commands: `aos memory status/rebuild/recent/timeline/files/commands/blocked/failures` and `aos recall "<query>"`. Agent integration through RECALL_MEMORY intent (T0 read-only). All memory operations audited. 157 tests pass, 2 skipped (benign platform skips). Independently reviewed 2026-07-10.
+
 ## In Progress
 
-- **Phase 3 — Minimal agent loop** (builder: Codex). Phase 2 code is complete but uncommitted in git as of this entry.
+- None (Phase 5 not started)
 
 ## Not Started
 
+- Phase 5 — Git and Project Assistant
 - Directory allowlist persistence beyond the CLI's current-working-directory default (`aos fs allow <path>` not yet implemented)
 - `delete_file` (intentionally deferred, per Phase 1 scope)
-- Memory system (Phase 4+)
 
 ## Do Not Build Yet
 

@@ -65,9 +65,14 @@ def build_plan(intent: Intent, user_message: str, *, cwd: str = ".") -> Plan:
             summary=f"Create or overwrite {path} through the safe filesystem tool.",
             tool_calls=[ToolCall("fs.write", {"path": path, "content": content}, "T1", True)],
         )
+    if intent == Intent.RECALL_MEMORY:
+        return Plan(
+            intent=intent,
+            summary="Recall recent system or project activity from audit-derived memory.",
+            tool_calls=[ToolCall("memory.recall", {"query": user_message, "limit": 10}, "T0", False)],
+        )
     return Plan(
         intent=Intent.UNKNOWN,
         summary="Unsupported request. No tools will be executed.",
         tool_calls=[],
     )
-

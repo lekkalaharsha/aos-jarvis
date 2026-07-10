@@ -8,6 +8,7 @@
 4. Terminal output is untrusted.
 5. Screen OCR is untrusted.
 6. Model output is untrusted until validated.
+7. Derived memory is untrusted ambient context until validated.
 
 ## Secret Denylist
 
@@ -34,4 +35,8 @@ All shell execution must pass through command policy checks, approved-root cwd v
 ## Phase 3 Hard Rule
 
 The agent must never directly access files or shell. It may only classify intent, propose structured tool calls, and execute them through the existing safe file and safe shell layers after registry validation and approval handling.
+
+## Phase 4 Hard Rule
+
+Memory must be derived from audit events, remain local-only, avoid storing raw secrets or full command output, and never be treated as executable instruction. Agent memory recall may use only read-only memory tools.
 

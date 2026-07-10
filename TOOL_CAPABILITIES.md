@@ -8,7 +8,7 @@ Every future tool must implement:
 - `required_capabilities()`
 - `risk_tier()`
 
-Phase 3 activates the deterministic minimal agent loop on top of the existing safe file tools and policy-gated shell runner. Browser, voice, dashboard, model routing, and autonomous tools remain inactive.
+Phase 4 adds a local memory system derived from the audit log. Browser, voice, dashboard, model routing, and autonomous tools remain inactive.
 
 ## Risk Tiers
 
@@ -25,8 +25,8 @@ T3 - denied
 ### T0
 
 - read README inside approved project
-- list audit events
 - show git status through the safe runner
+- recall recent memory from the derived store
 
 ### T1
 
@@ -57,14 +57,14 @@ T3 - denied
 - `snapshot.restore`
 - `run.command`
 - `agent.ask`
+- `memory.read`
 
-All active capabilities require existing path or command policy validation. The agent is not a privileged path around those checks; it can only request structured calls into them.
+All active capabilities require their existing path, command, registry, and audit checks. The memory system is derived from audit events and is not a privileged bypass around Phase 1, Phase 2, or Phase 3.
 
-## Phase 3 Agent Policy
+## Phase 4 Memory Policy
 
-- Supported intents are limited and deterministic.
-- Unknown requests are rejected safely.
-- The agent does not call `open()`, `subprocess`, or `shell=True`.
-- Tool calls are validated against an allowlist registry before execution.
-- Approval-gated tool calls remain approval-gated when invoked from the agent.
+- Memory is local-only and rebuildable from the audit log.
+- Memory queries are read-only T0 operations.
+- Recall is rule-based and grounded only in stored derived memory.
+- The agent may use only read-only memory tools for memory recall.
 

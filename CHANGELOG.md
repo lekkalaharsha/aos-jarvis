@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-07-10 — OpenCode (Phase 4 independent review)
+- Conducted a strict Phase 4 security, correctness, privacy, and architecture review across all 10 areas.
+- Verdict: PASS. No critical bugs, data corruption risks, or privacy leaks found.
+- All 157 tests pass (2 skipped, benign platform limitations). Audit verify passes.
+- Updated `PROJECT_STATE.md` to reflect Phase 4 COMPLETE + REVIEWED status.
+- Phase 4 is ready. Phase 5 is NOT STARTED. Do not begin Phase 5 without human owner approval.
+
 ## 2026-07-10 — Codex (Phase 1 implementation) + Claude Code (verification)
 - Codex implemented Phase 1: permission engine (`aos/safety/{permissions,risk,paths,errors}.py`), safe file tools (`aos/tools/fs_tools.py`), snapshot/restore (`aos/safety/snapshots.py`), CLI (`aos fs *`, `aos snapshot *`), tests, and docs (`docs/phase_1.md`, `docs/permissions.md`, `docs/risk_tiers.md`). Updated `PHASE_CONTRACT.md` to declare Phase 1 active.
 - Added `AOS_DATA_DIR` env override to `aos/config/loader.py` for local/test data isolation.

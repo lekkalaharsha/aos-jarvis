@@ -26,6 +26,9 @@ def test_create_notes_intent():
     assert classify_intent("create notes.md") == Intent.CREATE_NOTES
 
 
+def test_recall_memory_intent():
+    assert classify_intent("what did I work on recently") == Intent.RECALL_MEMORY
+
+
 def test_unknown_intent():
     assert classify_intent("deploy this project to production") == Intent.UNKNOWN
-

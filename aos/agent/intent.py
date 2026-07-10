@@ -10,6 +10,20 @@ _CREATE_NOTES_PATTERN = re.compile(r"\b(?:create|write)\s+([^\s]+(?:\.md|\.txt)?
 
 def classify_intent(user_message: str) -> Intent:
     message = user_message.strip().lower()
+    if any(
+        phrase in message
+        for phrase in (
+            "what did i work on recently",
+            "what did i edit today",
+            "what files changed",
+            "what commands did i run",
+            "what failed recently",
+            "show blocked actions",
+            "show project timeline",
+            "show recent activity",
+        )
+    ):
+        return Intent.RECALL_MEMORY
     if any(phrase in message for phrase in ("summarize this project", "what is this repo about", "explain this project")):
         return Intent.PROJECT_SUMMARY
     if "todo" in message or "fixme" in message or "hack" in message:
@@ -47,4 +61,3 @@ def extract_notes_filename(user_message: str) -> str:
     if "." not in candidate:
         return "notes.md"
     return candidate
-

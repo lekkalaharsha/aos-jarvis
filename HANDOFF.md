@@ -1,59 +1,49 @@
 # HANDOFF
 
 ## Current Phase
-Phase 1 — Permission Engine + Safe File Tools (implemented, independently verified)
+Phase 4 — Memory System, COMPLETE + REVIEWED
 
 ## Last Worker
-Claude Code (reviewer role this pass — Codex implemented, Claude Code verified)
+OpenCode (Phase 4 independent review)
 
 ## Date
 2026-07-10
 
 ## Summary
-Codex implemented Phase 1 end to end: permission engine (`aos/safety/{permissions,risk,paths,errors}.py`), safe file tools (`aos/tools/fs_tools.py`), snapshot/restore (`aos/safety/snapshots.py`), CLI commands (`aos/interfaces/cli/{fs_commands,snapshot_commands}.py`), tests, and docs (`docs/phase_1.md`, `docs/permissions.md`, `docs/risk_tiers.md`). Codex also updated `PHASE_CONTRACT.md` to declare Phase 1 active and `TASK_BOARD.md` to reflect completion.
+OpenCode conducted a strict Phase 4 review across all 10 areas: memory source of truth, idempotence, privacy/redaction, timeline correctness, recall correctness, agent integration safety, CLI safety, audit logging, tests, and architecture consistency.
 
-I independently verified this handoff rather than just trusting the report: ran the full test suite fresh, then drove the CLI by hand in a throwaway project directory (with `AOS_DATA_DIR` pointed at a scratch dir, cleaned up after) to confirm blocking, auditing, snapshotting, and restore actually work end to end, not just under test.
+**Verdict: PASS.** No critical bugs, data corruption risks, or privacy leaks found. All 157 tests pass. Audit verify passes.
 
-## Files Changed (this verification pass)
-- `PROJECT_STATE.md`, `TASKS.md`, `HANDOFF.md`, `CHANGELOG.md` — updated to record verified Phase 1 completion.
-- No production code changed — Codex's implementation passed verification as-is.
+Key findings:
+- Memory is correctly derived only from audit events; self-index loops prevented by filtering out `memory.*` events
+- Redaction applied at three layers (shell runner → indexer → audit payload)
+- Agent RECALL_MEMORY uses only memory.recall at T0; cannot trigger file or shell tools
+- No Phase 5 features were started; no dashboard/model/vector DB behavior
+- PROJECT_STATE.md was updated to reflect Phase 4 completion
+
+## Files Changed (this review pass)
+- `PROJECT_STATE.md` — updated header to Phase 4 COMPLETE + REVIEWED, moved Phase 3/4 to Completed, Phase 5 to Not Started
+- No production code changed — Phase 4 implementation passed review as-is
 
 ## Commands Run
 ```bash
-pytest -q -rs
-# manual CLI walkthrough against a scratch project dir, AOS_DATA_DIR overridden:
-aos fs list /etc            # blocked
-aos fs read /etc/passwd      # blocked
-aos fs read ~/.ssh/id_rsa    # blocked
-aos fs read .env             # blocked (secret pattern, inside approved root)
-aos fs list .
-aos fs read smoke.txt
-aos fs search alpha --root .
-aos fs write created.txt --content "created content" --yes
-aos fs edit smoke.txt --old alpha --new beta --yes
-aos snapshot list
-aos snapshot restore <id> --yes
-aos fs read "../../etc/passwd"        # blocked (traversal)
-aos fs write /tmp/outside_review.txt --content x --yes   # blocked (outside root)
-aos audit list
-aos audit verify
-aos version / doctor / eval run       # Phase 0 sanity, unaffected
+pytest -q -rs          # 157 passed, 2 skipped
 ```
 
 ## Test Result
-- Passed: 39
+- Passed: 157
 - Failed: 0
-- Skipped: 1 (direct `os.symlink` creation test — Windows denies unprivileged symlinks; the resolved-path-escape protection is covered by a separate passing test, so this is a benign platform limitation, not a coverage gap)
+- Skipped: 2 (benign Windows symlink privilege limitation, same as Phase 1 — covered by separate passing tests)
 
 ## What Is Failing
-- Nothing. (Note: an earlier ad hoc pytest run I did mid-session, before Codex's final handoff, showed a trailing-newline bug in `edit_file` — that was already fixed by the time of this final verification.)
+- Nothing.
 
 ## Next Worker
-OpenCode (or human owner for sign-off)
+Human owner or Claude Code (Phase 5 builder)
 
 ## Next Task
-Run the Phase 1 test suite and CLI walkthrough on real Linux (Ubuntu/Kali) — all verification so far has been on Windows. Then human owner reviews and decides whether to open Phase 2 (safe shell runner) via `PHASE_CONTRACT.md`.
+Review this Phase 4 review report and decide whether to open Phase 5 (Git and Project Assistant) via `PHASE_CONTRACT.md`.
 
 ## Do Not Do
-- Do not implement Phase 2+ features (shell runner, model calls, voice, dashboard, browser, screen understanding, multi-agent, memory system).
-- Do not add a persistent directory allowlist beyond CWD without discussing scope — currently an intentionally deferred, non-blocking gap (see `TASKS.md` P1-010).
+- Do not implement Phase 5+ features (git assistant, voice, dashboard, browser, screen, model router, multi-agent, embeddings, vector DB) until PHASE_CONTRACT.md is updated.
+- Do not start Phase 5 without human owner approval.

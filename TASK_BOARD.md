@@ -19,6 +19,7 @@
 - Phase 1 safety tests and documentation
 - Phase 2 command policy, safe shell runner, CLI `aos run`, and audit coverage
 - Phase 3 deterministic minimal agent loop and CLI `aos ask`
+- Phase 4 audit-derived memory store, timeline, recall, CLI, and agent integration
 
 ## Blocked
 
@@ -29,7 +30,7 @@
 - Voice
 - Dashboard
 - Browser
-- Memory system
 - Model router
 - Multi-agent planner
+- Cloud memory
 

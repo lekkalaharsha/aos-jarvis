@@ -12,6 +12,7 @@ class Intent(str, Enum):
     GIT_STATUS = "GIT_STATUS"
     READ_FILE = "READ_FILE"
     CREATE_NOTES = "CREATE_NOTES"
+    RECALL_MEMORY = "RECALL_MEMORY"
     UNKNOWN = "UNKNOWN"
 
 
@@ -50,4 +51,3 @@ class AgentResult:
     blocked: bool
     error: str | None
     audit_event_id: int | None
-

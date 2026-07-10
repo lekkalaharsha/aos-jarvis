@@ -18,6 +18,7 @@ SUPPORTED_ACTIONS = (
     "show git status",
     "read README.md",
     "create notes.md",
+    "what did I work on recently",
 )
 
 _SECRET_TEXT_PATTERN = re.compile(
@@ -143,6 +144,11 @@ def _final_answer(intent: Intent, observations: list[Observation]) -> str:
             if observation.tool == "fs.write":
                 return f"Created {Path(observation.data['path']).name}."
         return "Notes file operation completed."
+    if intent == Intent.RECALL_MEMORY:
+        for observation in observations:
+            if observation.tool == "memory.recall":
+                return observation.data.get("summary", observation.summary)
+        return "No memory results were returned."
     return "Supported requests: " + ", ".join(SUPPORTED_ACTIONS)
 
 
