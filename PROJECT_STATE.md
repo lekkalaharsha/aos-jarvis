@@ -1,6 +1,6 @@
 # Project State
 
-Current phase: Phase 1 — Permission Engine + Safe File Tools (implemented by Codex, independently verified by Claude Code)
+Current phase: Phase 3 — Minimal Agent Loop, IN PROGRESS (builder: Codex). Phases 0–2 are COMPLETE + HARDENED (2026-07-10).
 
 ## Completed
 
@@ -25,16 +25,21 @@ Current phase: Phase 1 — Permission Engine + Safe File Tools (implemented by C
 - **Phase 1 — Docs**: `docs/phase_1.md`, `docs/permissions.md`, `docs/risk_tiers.md`.
 - **Phase 1 — Independently verified** (2026-07-10, Claude Code): full `pytest -q -rs` run (39 passed, 1 skipped — the skip is a benign Windows-can't-create-unprivileged-symlinks limitation, covered instead by a resolved-path-escape test); manual CLI walkthrough in a throwaway project directory confirmed blocked paths (`/etc`, `~/.ssh/id_rsa`, `.env`, traversal, outside-approved-root), correct `list/read/search/write/edit`, snapshot-before-edit, and a real restore that correctly reverted file content; `audit list`/`audit verify` confirmed every allowed and blocked action was logged and the hash chain stayed valid; Phase 0 commands (`version`, `doctor`, `eval run`) confirmed unaffected.
 
+- **Phase 2 — Command policy** (`aos/safety/command_policy.py`, `aos/safety/commands.py`): command classification (ALLOW_READONLY / ALLOW_PROJECT_TEST / ALLOW_WITH_APPROVAL / DENY / UNKNOWN), deny-by-default for unknown commands.
+- **Phase 2 — Safe shell runner** (`aos/tools/shell_runner.py`, `aos/safety/sandbox.py`): no `shell=True`, cwd restricted to approved roots, sanitized env, timeout and output caps, audited execution.
+- **Phase 2 — CLI** (`aos/interfaces/cli/run_commands.py`): `aos run`, wired into `main.py`.
+- **Phase 2 — Docs**: `docs/phase_2.md`, `docs/command_runner.md`, updated `docs/risk_tiers.md`.
+- **Phase 2 — Verified** (2026-07-10): full suite green — 133 passed, 2 skipped (benign platform skips); declared COMPLETE + HARDENED by Human Owner.
+
 ## In Progress
 
-- None. Phase 1 code, docs, and verification are complete as of this entry.
+- **Phase 3 — Minimal agent loop** (builder: Codex). Phase 2 code is complete but uncommitted in git as of this entry.
 
 ## Not Started
 
 - Directory allowlist persistence beyond the CLI's current-working-directory default (`aos fs allow <path>` not yet implemented)
 - `delete_file` (intentionally deferred, per Phase 1 scope)
-- Shell runner (Phase 2)
-- Model provider integration (Phase 3+)
+- Memory system (Phase 4+)
 
 ## Do Not Build Yet
 

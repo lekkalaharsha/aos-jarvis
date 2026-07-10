@@ -5,7 +5,14 @@
       "Bash(python *)",
       "Bash(git init *)",
       "Bash(git config *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(cd /d/AOS-Jarvis)",
+      "Bash(python3 -c ' *)",
+      "Bash(rtk python *)",
+      "WebSearch",
+      "PowerShell(python -m pytest -q --tb=no 2>$null | Select-Object -Last 5)",
+      "PowerShell(rtk git *)"
     ]
   }
 }
