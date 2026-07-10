@@ -17,6 +17,8 @@
 - Phase 1 snapshot create/list/restore
 - Phase 1 CLI commands for `aos fs` and `aos snapshot`
 - Phase 1 safety tests and documentation
+- Phase 2 command policy, safe shell runner, CLI `aos run`, and audit coverage
+- Phase 3 deterministic minimal agent loop and CLI `aos ask`
 
 ## Blocked
 
@@ -27,9 +29,7 @@
 - Voice
 - Dashboard
 - Browser
-- Multi-agent planner
-- Shell execution
-- Unrestricted file access
-- AI agent loop
 - Memory system
 - Model router
+- Multi-agent planner
+

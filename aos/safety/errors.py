@@ -33,3 +33,11 @@ class BinaryFileBlocked(PermissionBlocked):
 
 class ApprovalRequired(SafetyError):
     """Raised when a write action is attempted without explicit approval."""
+
+
+class CommandPolicyBlocked(PermissionBlocked):
+    """Raised when a shell command is denied by command policy."""
+
+
+class CommandExecutionFailed(SafetyError):
+    """Raised when a shell command could not be started or completed safely."""

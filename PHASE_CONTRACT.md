@@ -1,50 +1,48 @@
 # Phase Contract
 
-## Active Phase: Phase 1 - Permission Engine and Safe File Tools
+## Active Phase: Phase 3 - Minimal Agent Loop
 
 ## Phase Goal
 
-Implement permissioned file access for approved project folders. AOS-Jarvis can list, read, search, write, edit, snapshot, and restore files only after path safety checks, risk classification, audit logging, and approval gates where required.
+Implement a deterministic agent loop that classifies a small set of user intents, proposes structured tool calls, validates them, and executes them only through the existing safe file and safe shell tools.
 
 ## Allowed Work
 
-- Maintain Phase 0 foundation behavior.
-- Implement directory allowlists and capability-based permission checks.
-- Implement path traversal, dangerous path, secret file, and symlink escape blocking.
-- Implement read-only file tools for approved project text files.
-- Implement reversible write/edit tools with diff previews and snapshots.
-- Implement snapshot listing and T2 restore with strong approval in the CLI.
-- Implement audit events for allowed and blocked Phase 1 file actions.
-- Add tests and documentation for Phase 1 safety behavior.
+- Maintain all Phase 0, Phase 1, and Phase 2 behavior.
+- Implement deterministic intent classification and rule-based planning.
+- Implement a structured tool registry that delegates only to existing safe tools.
+- Implement the `aos ask` CLI command and supporting tests/docs.
+- Add agent audit events for request, plan, tool preview/apply, blocked, and result.
 
 ## Forbidden Work
 
-The following remain forbidden in Phase 1:
+The following remain forbidden in Phase 3:
 
-- AI agent loop
+- memory system
 - voice
 - dashboard
 - browser automation
 - screen understanding
-- memory system
 - model router
 - multi-agent system
-- shell command runner
-- unrestricted filesystem access
-- access to secrets or credential stores
+- unrestricted shell access
+- arbitrary filesystem access
+- direct subprocess use by the agent
+- direct file reads/writes by the agent
+- cloud model integration beyond a minimal local adapter interface
 
 ## Exit Criteria
 
-- Existing Phase 0 tests still pass.
-- Phase 1 permission, path, file tool, snapshot, and safety tests pass.
-- `aos fs list` works inside an approved root.
-- `aos fs read` works for approved non-secret text files.
-- `aos fs search` searches approved project text files.
-- `aos fs write` and `aos fs edit` require approval and create snapshots before modifying existing files.
-- `aos snapshot list` and `aos snapshot restore` work with restore treated as T2.
-- Dangerous paths, secrets, traversal, and symlink escapes are blocked and audited.
-- Allowed file actions are audited.
-- Documentation explains Phase 1 behavior and limits.
+- Existing Phase 0, Phase 1, and Phase 2 tests still pass.
+- Phase 3 intent, planner, registry, loop, CLI, and safety tests pass.
+- `aos ask --dry-run "run tests"` works.
+- `aos ask "summarize this project"` works.
+- `aos ask "find TODOs"` works.
+- `aos ask "show git status"` works.
+- `aos ask "run tests"` requires approval.
+- `aos ask "read .env"` is blocked.
+- Unknown requests execute no tools.
+- Agent audit events are written and audit verification still passes.
 
 ## Agent Rule
 
@@ -57,3 +55,4 @@ Before doing work, every agent must read:
 5. `CODING_RULES.md`
 
 No agent may implement work outside the active phase unless the human owner updates `PHASE_CONTRACT.md`.
+

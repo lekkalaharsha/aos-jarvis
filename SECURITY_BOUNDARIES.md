@@ -26,3 +26,12 @@ No component should access secrets.
 ## Phase 1 Hard Rule
 
 All file actions must pass through permission checks, risk classification, audit logging, and snapshot/approval logic when required. Raw unrestricted filesystem access is not allowed for Phase 1 tools.
+
+## Phase 2 Hard Rule
+
+All shell execution must pass through command policy checks, approved-root cwd validation, sanitized environment handling, timeout enforcement, and audit logging. Raw unrestricted terminal access is not allowed.
+
+## Phase 3 Hard Rule
+
+The agent must never directly access files or shell. It may only classify intent, propose structured tool calls, and execute them through the existing safe file and safe shell layers after registry validation and approval handling.
+

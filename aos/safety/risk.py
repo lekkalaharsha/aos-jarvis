@@ -39,3 +39,20 @@ def classify_file_action(action: str, *, large_file: bool = False) -> RiskTier:
     if action in {"delete", "restore"}:
         return RiskTier.T2
     return RiskTier.T3
+
+
+def classify_command_risk(argv: list[str], category: str) -> RiskTier:
+    """Classify Phase 2 command execution into documented risk tiers."""
+    if not argv:
+        return RiskTier.T3
+    if category in {"DENY", "UNKNOWN"}:
+        return RiskTier.T3
+    if category == "ALLOW_PROJECT_TEST":
+        return RiskTier.T1
+    if category == "ALLOW_WITH_APPROVAL":
+        return RiskTier.T2
+    if category == "ALLOW_READONLY":
+        if len(argv) >= 2 and argv[0] == "git" and argv[1] in {"diff", "log"}:
+            return RiskTier.T1
+        return RiskTier.T0
+    return RiskTier.T3

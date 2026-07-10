@@ -8,7 +8,7 @@ Every future tool must implement:
 - `required_capabilities()`
 - `risk_tier()`
 
-Phase 1 activates only local safe file tools. Shell, browser, voice, dashboard, model, and autonomous tools remain inactive.
+Phase 3 activates the deterministic minimal agent loop on top of the existing safe file tools and policy-gated shell runner. Browser, voice, dashboard, model routing, and autonomous tools remain inactive.
 
 ## Risk Tiers
 
@@ -26,17 +26,18 @@ T3 - denied
 
 - read README inside approved project
 - list audit events
+- show git status through the safe runner
 
 ### T1
 
 - edit README with snapshot
 - create notes file
+- run pytest through the safe runner
 
 ### T2
 
-- install package
-- git push
-- network call
+- restore snapshot
+- run approval-gated project scripts
 
 ### T3
 
@@ -46,7 +47,7 @@ T3 - denied
 - modify /etc
 - read browser cookies
 
-## Phase 1 Active Capabilities
+## Active Capabilities
 
 - `fs.list`
 - `fs.read`
@@ -54,5 +55,16 @@ T3 - denied
 - `fs.write`
 - `fs.edit`
 - `snapshot.restore`
+- `run.command`
+- `agent.ask`
 
-All active file capabilities require approved roots and deny secret or dangerous paths.
+All active capabilities require existing path or command policy validation. The agent is not a privileged path around those checks; it can only request structured calls into them.
+
+## Phase 3 Agent Policy
+
+- Supported intents are limited and deterministic.
+- Unknown requests are rejected safely.
+- The agent does not call `open()`, `subprocess`, or `shell=True`.
+- Tool calls are validated against an allowlist registry before execution.
+- Approval-gated tool calls remain approval-gated when invoked from the agent.
+

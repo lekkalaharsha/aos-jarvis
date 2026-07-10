@@ -20,6 +20,7 @@ CAPABILITY_KINDS = {
     "fs.write": "file.write",
     "fs.edit": "file.write",
     "snapshot.restore": "file.restore",
+    "run.command": "command.exec",
 }
 
 

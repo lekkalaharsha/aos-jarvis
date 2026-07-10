@@ -2,6 +2,8 @@
 
 Phase 1 uses the existing risk model. File tools and snapshot operations assign risk tiers via a single source of truth, `classify_file_action()` in `aos/safety/risk.py`, rather than hardcoding tiers per call site.
 
+Phase 2 extends the same `RiskTier` model to shell commands through `classify_command_risk()` in `aos/safety/risk.py`.
+
 ## T0
 
 Safe read-only actions. These are allowed after permission checks.
@@ -11,6 +13,7 @@ Examples:
 - List an approved directory.
 - Read a normal approved project text file.
 - Search approved project files.
+- Run `pwd`, `ls`, `git status`, or version checks such as `python --version`.
 
 ## T1
 
@@ -22,6 +25,7 @@ Examples:
 - Write a file.
 - Edit a file.
 - Append-style writes when added later.
+- Run project tests such as `pytest`, `python -m pytest`, `npm test`, `git diff`, or `git log`.
 
 ## T2
 
@@ -32,6 +36,7 @@ Examples:
 - Restore a snapshot.
 - Delete a file if implemented later.
 - Overwrite a large file.
+- Run commands that execute project code or local builds, such as `python script.py`, `node script.js`, `make build`, or `npm run build`.
 
 ## T3
 
@@ -45,6 +50,7 @@ Examples:
 - Credentials.
 - Browser cookies.
 - Root or system folders.
+- `sudo`, root escalation, destructive commands, pipe-to-shell patterns, unsafe cwd, and unknown commands.
 
 ## Snapshots and Audit
 
