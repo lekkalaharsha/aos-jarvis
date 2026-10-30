@@ -196,10 +196,8 @@ contract is the source of truth for what may be implemented next.
 
 ## License
 
-The repository does not yet declare a final open-source license. Before public
-release, the project owner must choose and add an OSI-approved license, then
-update this section and the package metadata. Until then, reuse and
-redistribution rights should be treated as unspecified.
+AOS-Jarvis is released under the [MIT License](LICENSE). Contributions are
+welcomed under the same license; see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Disclaimer
 
