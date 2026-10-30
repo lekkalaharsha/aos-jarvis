@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+<h1>System Overview</h1>
+<div class="kv">
+  <span class="label">Version</span><span>{{ data.version }}</span>
+  <span class="label">Data directory</span><span>{{ data.data_dir }}</span>
+  <span class="label">Audit chain</span>
+  <span>
+    {% if data.audit_chain_valid %}
+      <span class="badge-valid">VALID</span> ({{ data.audit_chain_count }} events)
+    {% else %}
+      <span class="badge-invalid">INVALID</span> — {{ data.audit_chain_reason }}
+    {% endif %}
+  </span>
+</div>
+{% if data.config %}
+<h2>Configuration</h2>
+<div class="kv">
+{% for section, values in data.config.items() %}
+  {% if values is mapping %}
+    {% for k, v in values.items() %}
+      <span class="label">{{ section }}.{{ k }}</span><span>{{ v }}</span>
+    {% endfor %}
+  {% else %}
+    <span class="label">{{ section }}</span><span>{{ values }}</span>
+  {% endif %}
+{% endfor %}
+</div>
+{% endif %}
+<p class="note">Read-only view. No system state is modified by this dashboard.</p>
+{% endblock %}

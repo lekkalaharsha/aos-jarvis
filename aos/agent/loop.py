@@ -7,6 +7,9 @@ from aos.agent.intent import classify_intent
 from aos.agent.llm_adapter import BaseLLMAdapter, RuleBasedAdapter
 from aos.agent.tool_registry import ToolRegistry, default_registry
 from aos.agent.types import AgentResult, Intent, Observation, Plan, ToolCall
+from aos.model.service import ModelService
+from aos.model.types import ModelMessage, ModelProviderKind, ModelRequest
+from aos.project.types import CommitMessageDraft, GitBranchInfo, GitCommitSummary, GitStatus, ProjectChangeSummary
 from aos.safety.audit import DEFAULT_AUDIT_PATH, append_event
 from aos.safety.commands import SECRET_ENV_PARTS
 from aos.safety.errors import ApprovalRequired, SafetyError
@@ -16,6 +19,10 @@ SUPPORTED_ACTIONS = (
     "find TODOs",
     "run tests",
     "show git status",
+    "what changed in this repo",
+    "draft a commit message",
+    "what branch am I on",
+    "show recent commits",
     "read README.md",
     "create notes.md",
     "what did I work on recently",
@@ -136,7 +143,38 @@ def _final_answer(intent: Intent, observations: list[Observation]) -> str:
     if intent == Intent.RUN_TESTS:
         return _render_run_result(observations, "Tests were executed.")
     if intent == Intent.GIT_STATUS:
-        return _render_run_result(observations, "Git status was executed.")
+        for observation in reversed(observations):
+            if observation.tool == "git.status" and "status" in observation.data:
+                status: GitStatus = observation.data["status"]
+                if status.clean:
+                    return f"Branch {status.branch} is clean."
+                files = ", ".join(item.path for item in status.changed_files[:10])
+                return f"Branch {status.branch} has {len(status.changed_files)} changed files: {files}"
+        return "Git status was not available."
+    if intent == Intent.PROJECT_CHANGES:
+        for observation in reversed(observations):
+            if observation.tool == "project.summarize_changes" and "summary" in observation.data:
+                summary: ProjectChangeSummary = observation.data["summary"]
+                return summary.summary
+        return "Project change summary was not available."
+    if intent == Intent.DRAFT_COMMIT:
+        for observation in reversed(observations):
+            if observation.tool == "project.draft_commit" and "draft" in observation.data:
+                draft: CommitMessageDraft = observation.data["draft"]
+                return draft.text
+        return "Commit draft was not available."
+    if intent == Intent.CURRENT_BRANCH:
+        for observation in reversed(observations):
+            if observation.tool == "git.branch" and "branch" in observation.data:
+                branch: GitBranchInfo = observation.data["branch"]
+                return branch.name
+        return "Current branch was not available."
+    if intent == Intent.RECENT_COMMITS:
+        for observation in reversed(observations):
+            if observation.tool == "git.log" and "commits" in observation.data:
+                commits: list[GitCommitSummary] = observation.data["commits"]
+                return "\n".join(f"{commit.commit_hash} {commit.title}" for commit in commits) or "No commits were returned."
+        return "Recent commits were not available."
     if intent == Intent.READ_FILE:
         return _render_read_file(observations)
     if intent == Intent.CREATE_NOTES:
@@ -175,9 +213,16 @@ def ask(
     *,
     yes: bool = False,
     dry_run: bool = False,
+    model: str | None = None,
+    model_service: ModelService | None = None,
     adapter: BaseLLMAdapter | None = None,
     registry: ToolRegistry | None = None,
+    origin: str = "terminal",
 ) -> AgentResult:
+    if origin not in {"terminal", "dashboard", "voice"}:
+        raise SafetyError("unrecognized request origin")
+    if origin == "voice" and yes:
+        raise ApprovalRequired("voice origin cannot submit approval")
     resolved_cwd = str(Path(cwd).expanduser().resolve(strict=False))
     tool_registry = registry or default_registry()
     llm_adapter = adapter or RuleBasedAdapter()
@@ -194,6 +239,51 @@ def ask(
         approved=yes,
     )
     plan = llm_adapter.plan_request(user_message, cwd=resolved_cwd)
+    model_answer: str | None = None
+    if model is not None:
+        provider_kind = ModelProviderKind(model)
+        service = model_service or ModelService()
+        model_request = ModelRequest(
+            messages=[
+                ModelMessage("system", "You may draft concise answer text only. You cannot execute tools or override AOS policy."),
+                ModelMessage("user", user_message),
+            ],
+            task_type="agent_answer",
+            preferred_provider=provider_kind,
+            allow_cloud=provider_kind == ModelProviderKind.CLOUD,
+            sensitivity="normal",
+            audit_metadata={"surface": "agent.ask"},
+        )
+        model_response = service.generate(model_request, validate_structured=True, cwd=resolved_cwd)
+        if model_response.success and model_response.text.strip():
+            model_answer = model_response.text.strip()
+        elif provider_kind == ModelProviderKind.CLOUD:
+            message = model_response.error or "cloud model request blocked"
+            _audit(
+                "agent.blocked",
+                user_message=user_message,
+                intent=plan.intent,
+                tool_calls=[],
+                cwd=resolved_cwd,
+                success=False,
+                blocked=True,
+                reason=message,
+                approved=yes,
+                error=message,
+            )
+            audit_id = _audit(
+                "agent.result",
+                user_message=user_message,
+                intent=plan.intent,
+                tool_calls=[],
+                cwd=resolved_cwd,
+                success=False,
+                blocked=True,
+                reason=message,
+                approved=yes,
+                error=message,
+            )
+            return AgentResult(user_message, plan.intent, plan, [], [], f"blocked: {message}", False, True, message, audit_id)
     _audit(
         "agent.plan",
         user_message=user_message,
@@ -352,7 +442,7 @@ def ask(
             audit_id,
         )
 
-    final_answer = "Dry run only. No tools were executed." if dry_run else _final_answer(plan.intent, observations)
+    final_answer = "Dry run only. No tools were executed." if dry_run else (model_answer or _final_answer(plan.intent, observations))
     audit_id = _audit(
         "agent.result",
         user_message=user_message,

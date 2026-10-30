@@ -1,0 +1,56 @@
+# P10-R1 reproducible Chromium verification image.
+#
+# Pinned by immutable digest (mcr.microsoft.com/playwright/python:v1.61.0-noble
+# resolved 2026-07-12): the Playwright 1.61.0 / Chromium browser binaries
+# baked into this exact base image are what get exercised, not "whatever
+# :v1.61.0-noble happens to point at today."
+#
+# Source is COPYed into this image at build time -- never bind-mounted from
+# the host at runtime. There is no host repo mount, no persistent volume,
+# and no browser profile baked in or reused across runs.
+FROM mcr.microsoft.com/playwright/python@sha256:a9731514f24121d1dcd25d58d0a38146646d290a5998fd80d3e533e7b5e21c69
+
+ARG AOS_UID=10001
+ARG AOS_GID=10001
+
+RUN groupadd --gid ${AOS_GID} aos \
+    && useradd --create-home --home-dir /home/aos --uid ${AOS_UID} --gid ${AOS_GID} --shell /usr/sbin/nologin aos
+
+# P10-R1 Finding 1: the base image bakes BOTH the full Chromium build and
+# the separate chrome-headless-shell binary. The headless shell injects
+# --no-sandbox into every child process it spawns (proven on real /proc
+# cmdlines, 2026-07-12), so it is deleted from the image entirely: even a
+# code regression that selected it again would fail closed on a missing
+# binary instead of silently launching unsandboxed. This is the
+# `playwright install --no-shell chromium` end state, achieved without
+# re-downloading anything (the full browser is already baked into the
+# pinned digest). The guard line fails the build if the full Chromium
+# binary is not where the pinned image is expected to provide it.
+RUN test -x /ms-playwright/chromium-*/chrome-linux*/chrome \
+    && rm -rf /ms-playwright/chromium_headless_shell-*
+
+WORKDIR /work
+COPY pyproject.toml ./
+COPY aos ./aos
+COPY tests ./tests
+COPY ops/phase10/container_check.py ./ops/phase10/container_check.py
+COPY ops/phase10/seccomp_profile.py ./ops/phase10/seccomp_profile.py
+COPY ops/phase10/Containerfile.layer2 ./ops/phase10/Containerfile.layer2
+COPY ops/phase10/verify_p10r1.sh ./ops/phase10/verify_p10r1.sh
+COPY ops/phase10/fixtures ./ops/phase10/fixtures
+
+# Chromium is already present in this pinned base image at the version
+# matching the pip pin below -- this only installs the thin Python package
+# set aos-jarvis needs (no `playwright install`, nothing re-downloaded).
+# The dev extra adds pytest so the focused P10-R1 gate tests can run INSIDE
+# this hardened container (AOS_BROWSER_P10R1_CONTAINER=1).
+RUN python -m pip install --no-cache-dir --upgrade pip \
+    && python -m pip install --no-cache-dir -e '.[dev,browser]' \
+    && chown -R ${AOS_UID}:${AOS_GID} /work /home/aos
+
+USER ${AOS_UID}:${AOS_GID}
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    HOME=/home/aos
+
+ENTRYPOINT ["python", "ops/phase10/container_check.py"]

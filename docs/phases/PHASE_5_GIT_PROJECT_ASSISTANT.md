@@ -1,52 +1,38 @@
-# Phase 5 — Git and Project Assistant
+# Phase 5 - Git and Project Assistant
 
-## Goal
+Phase 5 adds safe repository inspection and deterministic project/git summaries.
 
-Add read-mostly git awareness (status, diff, log summary) and commit message drafting, built on the Phase 3 agent loop.
+## Scope
 
-## Why this phase matters
+- `aos git status`
+- `aos git diff`
+- `aos git diff --stat`
+- `aos git log`
+- `aos git branch`
+- `aos git summarize`
+- `aos git draft-commit`
+- agent support for safe git/project questions
 
-Git is the first "real developer workflow" surface AOS-Jarvis touches. It's read-heavy and low-risk, making it a good proving ground before Phase 6 broadens the model surface.
+## Safety
 
-## In scope
+- All git commands route through the Phase 2 safe shell runner.
+- No direct subprocess access in `aos/project`.
+- No arbitrary git command passthrough.
+- No network git operations.
+- No destructive git operations.
+- Commit drafting is read-only.
 
-- `aos git status`, `aos git diff`, `aos git summarize`.
-- Branch detector, project detector.
-- Commit message drafting via `aos ask "draft a commit message"`.
+## Out of Scope
 
-## Out of scope
+- push/pull/fetch/clone
+- commit/stage
+- reset/clean/checkout/switch
+- merge/rebase/cherry-pick/stash
+- model routing
+- voice/dashboard/browser/screen features
 
-`git push`/`git commit` execution without explicit human action (any write git action is at minimum T2 per `SECURITY.md` and stays that way even after this phase), model routing (Phase 6), voice, dashboard, browser, screen understanding.
+## Exit Criteria
 
-## Deliverables
-
-A thin `aos/tools/git.py` wrapping read-only git plumbing through the Phase 2 shell runner's allowlist, not raw subprocess calls.
-
-## Commands expected after this phase
-
-```bash
-aos git status
-aos git diff
-aos git summarize
-aos ask "draft a commit message"
-```
-
-## Security requirements
-
-All git commands route through the Phase 2 shell runner's allowlist/audit path, not a separate code path. Write operations (`commit`, `push`) are out of scope for this phase entirely.
-
-## Test requirements
-
-Status/diff parsing tests against fixture repos, commit-message-draft tests with the model mocked.
-
-## Acceptance criteria
-
-`aos git status`/`diff`/`summarize` match real `git` output for a fixture repo; commit message drafts are reviewable text, never auto-applied.
-
-## Handoff requirements
-
-Same as prior phases.
-
-## Do not proceed until
-
-Phase 4 is frozen and `PHASE_CONTRACT.md` names Phase 5 as active.
+- Phase 0/1/2/3/4 tests still pass.
+- Phase 5 git, parser, project summary, CLI, agent, and safety tests pass.
+- Audit verification still passes.

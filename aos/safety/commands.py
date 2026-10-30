@@ -6,8 +6,6 @@ import os
 import re
 import shlex
 from dataclasses import dataclass
-from pathlib import Path
-
 from aos.safety.errors import CommandPolicyBlocked
 from aos.safety.sandbox import SandboxMode
 

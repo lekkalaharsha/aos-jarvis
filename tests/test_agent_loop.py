@@ -1,10 +1,14 @@
 import aos.agent.loop as agent_loop
+import aos.project.git_tools as git_tools
+import aos.project.project_summary as project_summary
 import aos.tools.fs_tools as fs_tools
 import aos.tools.shell_runner as shell_runner
 import pytest
 
 from aos.agent.loop import ask
+from aos.safety.errors import ApprovalRequired
 from aos.safety.audit import list_events
+from aos.project.types import CommitMessageDraft, GitBranchInfo, GitChangedFile, GitCommitSummary, GitStatus, ProjectChangeSummary
 
 
 @pytest.fixture()
@@ -15,6 +19,8 @@ def agent_env(tmp_path, monkeypatch):
     monkeypatch.setattr(agent_loop, "DEFAULT_AUDIT_PATH", audit_path)
     monkeypatch.setattr(fs_tools, "DEFAULT_AUDIT_PATH", audit_path)
     monkeypatch.setattr(shell_runner, "DEFAULT_AUDIT_PATH", audit_path)
+    monkeypatch.setattr(git_tools, "DEFAULT_AUDIT_PATH", audit_path)
+    monkeypatch.setattr(project_summary, "DEFAULT_AUDIT_PATH", audit_path)
     return root, audit_path
 
 
@@ -72,6 +78,12 @@ def test_run_tests_requires_approval(agent_env):
     assert "Approval required" in result.final_answer
 
 
+def test_voice_origin_cannot_submit_approval(agent_env):
+    root, _ = agent_env
+    with pytest.raises(ApprovalRequired):
+        ask("create notes.md", cwd=root, yes=True, origin="voice")
+
+
 def test_run_tests_with_yes_executes_via_safe_shell_runner(agent_env, monkeypatch):
     root, _ = agent_env
 
@@ -103,35 +115,75 @@ def test_run_tests_with_yes_executes_via_safe_shell_runner(agent_env, monkeypatc
     assert "2 passed" in result.final_answer
 
 
-def test_git_status_executes_via_safe_shell_runner(agent_env, monkeypatch):
+def test_git_status_executes_via_safe_git_tool(agent_env, monkeypatch):
     root, _ = agent_env
-
-    class _Result:
-        command_original = "git status"
-        return_code = 0
-        stdout = "On branch main"
-        stderr = ""
-        timed_out = False
-        error = None
-
-    monkeypatch.setattr("aos.agent.tool_registry.run_command", lambda *args, **kwargs: _Result())
     monkeypatch.setattr(
-        "aos.agent.tool_registry.preview_command",
-        lambda *args, **kwargs: type(
-            "Preview",
-            (),
-            {
-                "allowed": True,
-                "requires_approval": False,
-                "command_original": "git status",
-                "reason": "command allowed by policy",
-            },
-        )(),
+        "aos.agent.tool_registry.git_status",
+        lambda *args, **kwargs: GitStatus(
+            branch="main",
+            clean=False,
+            changed_files=[GitChangedFile("README.md", "M", " ", True, False, False)],
+            staged_count=1,
+            unstaged_count=0,
+            untracked_count=0,
+        ),
     )
     result = ask("show git status", cwd=root)
 
     assert result.success
-    assert "On branch main" in result.final_answer
+    assert "Branch main has 1 changed files" in result.final_answer
+
+
+def test_project_changes_uses_project_summary_tool(agent_env, monkeypatch):
+    root, _ = agent_env
+    monkeypatch.setattr(
+        "aos.agent.tool_registry.summarize_project_changes",
+        lambda *args, **kwargs: ProjectChangeSummary(
+            branch="main",
+            clean=False,
+            changed_files=["README.md"],
+            diff_summary=None,  # type: ignore[arg-type]
+            recent_commits=[GitCommitSummary("abc1234", "feat: change")],
+            summary="Branch main has changes.",
+        ),
+    )
+    result = ask("what changed in this repo", cwd=root)
+
+    assert result.success
+    assert result.final_answer == "Branch main has changes."
+
+
+def test_draft_commit_returns_draft_only(agent_env, monkeypatch):
+    root, _ = agent_env
+    monkeypatch.setattr(
+        "aos.agent.tool_registry.draft_commit_message",
+        lambda *args, **kwargs: CommitMessageDraft("feat(repo): update readme", "- files changed: 1"),
+    )
+    result = ask("draft a commit message", cwd=root)
+
+    assert result.success
+    assert "feat(repo): update readme" in result.final_answer
+
+
+def test_current_branch_uses_branch_tool(agent_env, monkeypatch):
+    root, _ = agent_env
+    monkeypatch.setattr("aos.agent.tool_registry.git_branch", lambda *args, **kwargs: GitBranchInfo("feature/test"))
+    result = ask("what branch am I on", cwd=root)
+
+    assert result.success
+    assert result.final_answer == "feature/test"
+
+
+def test_recent_commits_uses_git_log(agent_env, monkeypatch):
+    root, _ = agent_env
+    monkeypatch.setattr(
+        "aos.agent.tool_registry.git_log",
+        lambda *args, **kwargs: [GitCommitSummary("abc1234", "feat: change"), GitCommitSummary("def5678", "fix: test")],
+    )
+    result = ask("show recent commits", cwd=root)
+
+    assert result.success
+    assert "abc1234 feat: change" in result.final_answer
 
 
 def test_read_secret_file_is_blocked(agent_env):
@@ -170,6 +222,20 @@ def test_denied_command_cannot_run_even_with_yes(agent_env):
     result = ask("show git status", cwd="/etc", yes=True)
 
     assert result.blocked
+
+
+def test_git_push_prompt_does_not_execute(agent_env, monkeypatch):
+    root, _ = agent_env
+
+    def _boom(*args, **kwargs):
+        raise AssertionError("unsafe git operation should not execute")
+
+    monkeypatch.setattr("aos.agent.tool_registry.git_status", _boom)
+    monkeypatch.setattr("aos.agent.tool_registry.summarize_project_changes", _boom)
+    result = ask("run git push", cwd=root)
+
+    assert result.success
+    assert result.intent.value == "UNKNOWN"
 
 
 def test_agent_audit_events_are_written(agent_env):

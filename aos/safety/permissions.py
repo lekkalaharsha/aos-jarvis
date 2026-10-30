@@ -5,7 +5,7 @@ Deny-by-default: absence of an explicit ALLOW decision means denied.
 
 from pathlib import Path
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from aos.safety.errors import PermissionBlocked
 from aos.safety.paths import validate_path
@@ -21,6 +21,14 @@ CAPABILITY_KINDS = {
     "fs.edit": "file.write",
     "snapshot.restore": "file.restore",
     "run.command": "command.exec",
+    "workspace.open": "workspace.launch",
+    "workspace.editor": "workspace.launch",
+    "workspace.terminal": "workspace.launch",
+    "workspace.save": "workspace.state",
+    "workspace.restore": "workspace.state",
+    "workspace.serve": "workspace.server",
+    "browser.upload": "browser.upload",
+    "browser.promote": "browser.promote",
 }
 
 
@@ -30,12 +38,15 @@ class Capability(BaseModel):
 
 
 class PermissionDecision(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     capability: Capability
     decision: Decision = Decision.DENY
     reason: str = "deny by default"
     risk_tier: RiskTier = RiskTier.T3
     path: str | None = None
     allowed: bool = False
+    error: PermissionBlocked | None = None
 
 
 class PermissionEngine:
@@ -71,6 +82,7 @@ class PermissionEngine:
                 risk_tier=RiskTier.T3,
                 path=str(path),
                 allowed=False,
+                error=exc,
             )
 
         decision = decision_for_risk(risk_tier)
@@ -86,5 +98,7 @@ class PermissionEngine:
     def require_path(self, path: str | Path, capability: str, risk_tier: RiskTier) -> Path:
         result = self.check_path(path, capability, risk_tier)
         if not result.allowed or not result.path:
+            if result.error is not None:
+                raise result.error
             raise PermissionBlocked(result.reason)
         return Path(result.path)

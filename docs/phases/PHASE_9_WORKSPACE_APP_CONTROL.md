@@ -38,6 +38,23 @@ aos workspace dev-server --approve
 
 Starting a long-running process (dev server) is T2: explicit approval, and the audit event must record how to stop it. Opening an editor/terminal is T1 (reversible, no lasting system effect beyond the open window).
 
+### Approved-project bootstrap
+
+`aos workspace enroll <exact-path> --approve` is a direct Human Owner action
+that creates a one-use approval for the exact canonical directory. It does not
+consult registry membership or an approved parent. Workspace commands then take
+only the resulting opaque project ID. The cwd, registry listing, home, root,
+system paths, secret paths, and broad roots never implicitly authorize a project.
+The registry atomically persists only a digest of a consumed approval before it
+persists membership. An interruption therefore spends the approval rather than
+allowing replay; a re-enrollment always needs a newly issued approval.
+
+Launches use closed typed requests inside the Phase 2 runner: platform-allowlisted
+folder opening, VS Code, the platform default terminal, and the fixed loopback
+server profile. The server remains in the invoking foreground terminal. The only
+supported stop guidance is `Press Ctrl+C in the terminal that started this server.`;
+there is no cross-invocation process manager or PID authority.
+
 ## Test requirements
 
 Approval-gate tests for dev server start, working-directory scope tests reusing Phase 1/2 allowlist logic, workspace-restore idempotency tests.

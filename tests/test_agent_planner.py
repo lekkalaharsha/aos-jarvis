@@ -18,9 +18,29 @@ def test_run_tests_plan_uses_preview_and_apply():
     assert [call.tool for call in plan.tool_calls] == ["run.preview", "run.apply"]
 
 
-def test_git_status_plan_uses_safe_run_tools():
+def test_git_status_plan_uses_git_status_tool():
     plan = build_plan(Intent.GIT_STATUS, "show git status")
-    assert [call.tool for call in plan.tool_calls] == ["run.preview", "run.apply"]
+    assert [call.tool for call in plan.tool_calls] == ["git.status"]
+
+
+def test_project_changes_plan_uses_project_summary_tool():
+    plan = build_plan(Intent.PROJECT_CHANGES, "what changed in this repo")
+    assert [call.tool for call in plan.tool_calls] == ["project.summarize_changes"]
+
+
+def test_draft_commit_plan_uses_draft_tool_only():
+    plan = build_plan(Intent.DRAFT_COMMIT, "draft a commit message")
+    assert [call.tool for call in plan.tool_calls] == ["project.draft_commit"]
+
+
+def test_current_branch_plan_uses_branch_tool():
+    plan = build_plan(Intent.CURRENT_BRANCH, "what branch am I on")
+    assert [call.tool for call in plan.tool_calls] == ["git.branch"]
+
+
+def test_recent_commits_plan_uses_git_log():
+    plan = build_plan(Intent.RECENT_COMMITS, "show recent commits")
+    assert [call.tool for call in plan.tool_calls] == ["git.log"]
 
 
 def test_read_file_plan_uses_fs_read():
@@ -46,3 +66,12 @@ def test_recall_memory_plan_uses_memory_recall_only():
 def test_unknown_plan_has_no_tool_calls():
     plan = build_plan(Intent.UNKNOWN, "unsupported request")
     assert plan.tool_calls == []
+
+
+def test_workspace_plan_requires_opaque_project_id_not_path():
+    plan = build_plan(Intent.WORKSPACE_OPEN, "open workspace /tmp/project")
+    assert plan.tool_calls == []
+    project_id = "a" * 32
+    plan = build_plan(Intent.WORKSPACE_OPEN, f"open workspace {project_id}")
+    assert plan.tool_calls[0].tool == "workspace.open"
+    assert plan.tool_calls[0].args == {"project_id": project_id}

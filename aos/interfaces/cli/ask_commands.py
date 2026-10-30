@@ -11,10 +11,11 @@ console = Console()
 def ask_cli(
     request: str = typer.Argument(..., help="Natural-language request for the minimal agent loop."),
     cwd: str = typer.Option(".", "--cwd"),
+    model: str | None = typer.Option(None, "--model", help="Optional model provider: local or cloud."),
     yes: bool = typer.Option(False, "--yes", help="Approve approval-gated tool calls."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Show the structured plan without executing tools."),
 ) -> None:
-    result = ask(request, cwd=cwd, yes=yes, dry_run=dry_run)
+    result = ask(request, cwd=cwd, yes=yes, dry_run=dry_run, model=model)
     console.print(f"intent: {result.intent.value}")
     if result.tool_calls:
         for tool_call in result.tool_calls:

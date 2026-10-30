@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -8,9 +9,12 @@ from aos.agent.types import Observation, ToolCall
 from aos.memory.recall import recall
 from aos.memory.store import DEFAULT_MEMORY_DB_PATH, get_memory_status
 from aos.memory.timeline import get_recent_activity
+from aos.project.git_tools import draft_commit_message, git_branch, git_log, git_status, summarize_git_diff
+from aos.project.project_summary import summarize_project_changes
 from aos.safety.audit import DEFAULT_AUDIT_PATH
 from aos.safety.command_policy import evaluate_command
 from aos.safety.errors import PermissionBlocked
+from aos.safety.permissions import PermissionEngine
 from aos.safety.risk import RiskTier, classify_file_action
 from aos.safety.snapshots import get_snapshot, list_snapshots, restore_snapshot
 from aos.tools.fs_tools import (
@@ -22,7 +26,9 @@ from aos.tools.fs_tools import (
     search_files,
     write_file,
 )
+from aos.browser.domains import ApprovedDomainRegistry
 from aos.tools.shell_runner import preview_command, run_command
+from aos.tools.workspace import WorkspaceTool
 
 
 def _resolve_arg_path(base_cwd: Path, value: str) -> str:
@@ -30,6 +36,12 @@ def _resolve_arg_path(base_cwd: Path, value: str) -> str:
     if candidate.is_absolute():
         return str(candidate)
     return str((base_cwd / candidate).resolve(strict=False))
+
+
+def _resolve_project_cwd(base_cwd: Path, value: str) -> str:
+    """Resolve a project cwd without allowing an agent tool-call escape."""
+    candidate = _resolve_arg_path(base_cwd, value)
+    return str(PermissionEngine(approved_roots=[base_cwd]).require_path(candidate, "run.command", RiskTier.T0))
 
 
 @dataclass(frozen=True)
@@ -163,7 +175,90 @@ class ToolRegistry:
                 self._preview_memory_recall,
                 self._execute_memory_recall,
             ),
+            "git.status": ToolSpec(
+                "git.status",
+                frozenset({"cwd"}),
+                frozenset(),
+                lambda args, cwd: "T0",
+                lambda args, cwd: False,
+                self._preview_git_status,
+                self._execute_git_status,
+            ),
+            "git.diff_stat": ToolSpec(
+                "git.diff_stat",
+                frozenset({"cwd"}),
+                frozenset(),
+                lambda args, cwd: "T0",
+                lambda args, cwd: False,
+                self._preview_git_diff_stat,
+                self._execute_git_diff_stat,
+            ),
+            "git.log": ToolSpec(
+                "git.log",
+                frozenset({"cwd"}),
+                frozenset({"limit"}),
+                lambda args, cwd: "T0",
+                lambda args, cwd: False,
+                self._preview_git_log,
+                self._execute_git_log,
+            ),
+            "git.branch": ToolSpec(
+                "git.branch",
+                frozenset({"cwd"}),
+                frozenset(),
+                lambda args, cwd: "T0",
+                lambda args, cwd: False,
+                self._preview_git_branch,
+                self._execute_git_branch,
+            ),
+            "project.summarize_changes": ToolSpec(
+                "project.summarize_changes",
+                frozenset({"cwd"}),
+                frozenset(),
+                lambda args, cwd: "T0",
+                lambda args, cwd: False,
+                self._preview_project_summarize_changes,
+                self._execute_project_summarize_changes,
+            ),
+            "project.draft_commit": ToolSpec(
+                "project.draft_commit",
+                frozenset({"cwd"}),
+                frozenset(),
+                lambda args, cwd: "T0",
+                lambda args, cwd: False,
+                self._preview_project_draft_commit,
+                self._execute_project_draft_commit,
+            ),
+            "workspace.open": self._workspace_spec("workspace.open", "T1"),
+            "workspace.editor": self._workspace_spec("workspace.editor", "T1"),
+            "workspace.terminal": self._workspace_spec("workspace.terminal", "T1"),
+            "workspace.serve": self._workspace_spec("workspace.serve", "T2"),
+            # Phase 10: only a T0, read-only domain listing is agent-reachable.
+            # No T2 browser operation is registered here -- ToolCall.args is
+            # JSON-serializable and a BrowserApproval cannot be forwarded
+            # through it (contract Sec10/Sec11); every T2 browser action
+            # requires the terminal-only `aos browser task` entrypoint.
+            "browser.domain_list": ToolSpec(
+                "browser.domain_list",
+                frozenset(),
+                frozenset(),
+                lambda args, cwd: "T0",
+                lambda args, cwd: False,
+                self._preview_browser_domain_list,
+                self._execute_browser_domain_list,
+            ),
         }
+
+    def _workspace_spec(self, name: str, risk: str) -> ToolSpec:
+        return ToolSpec(name, frozenset({"project_id"}), frozenset(), lambda args, cwd: risk, lambda args, cwd: True, lambda args, cwd: self._preview_workspace(name, args, cwd), lambda args, cwd, yes: self._execute_workspace(name, args, cwd, yes))
+
+    def _preview_workspace(self, tool: str, args: dict[str, Any], cwd: Path) -> Observation:
+        return Observation(tool, True, "Validated enrolled workspace request.", {"project_id": args["project_id"]})
+
+    def _execute_workspace(self, tool: str, args: dict[str, Any], cwd: Path, yes: bool) -> Observation:
+        operation = tool.removeprefix("workspace.")
+        result = WorkspaceTool().execute({"operation": operation, "project_id": args["project_id"]})
+        return Observation(tool, result.ok, result.output, {"project_id": args["project_id"]})
 
     def list_tools(self) -> list[str]:
         return sorted(self._specs)
@@ -181,6 +276,8 @@ class ToolRegistry:
         if not keys.issubset(allowed_keys):
             extra = sorted(keys - allowed_keys)
             raise PermissionBlocked(f"unexpected args for {tool_call.tool}: {', '.join(extra)}")
+        if tool_call.tool.startswith("workspace.") and not re.fullmatch(r"[a-f0-9]{32}", str(args.get("project_id", ""))):
+            raise PermissionBlocked("workspace project_id must be an opaque registry ID")
         base_cwd = Path(cwd).expanduser().resolve(strict=False)
         expected_risk = spec.risk_tier_resolver(args, base_cwd)
         expected_approval = spec.requires_approval_resolver(args, base_cwd)
@@ -391,6 +488,62 @@ class ToolRegistry:
             audit_path=DEFAULT_AUDIT_PATH,
         )
         return Observation("memory.recall", True, "Memory recall completed.", {"summary": result.summary, "result": result})
+
+    def _preview_git_status(self, args: dict[str, Any], cwd: Path) -> Observation:
+        return Observation("git.status", True, f"Read git status for {_resolve_project_cwd(cwd, str(args['cwd']))}.")
+
+    def _execute_git_status(self, args: dict[str, Any], cwd: Path, yes: bool) -> Observation:
+        repo_cwd = _resolve_project_cwd(cwd, str(args["cwd"]))
+        status = git_status(repo_cwd)
+        return Observation("git.status", True, f"Loaded git status for {repo_cwd}.", {"status": status})
+
+    def _preview_git_diff_stat(self, args: dict[str, Any], cwd: Path) -> Observation:
+        return Observation("git.diff_stat", True, f"Read git diff --stat for {_resolve_project_cwd(cwd, str(args['cwd']))}.")
+
+    def _execute_git_diff_stat(self, args: dict[str, Any], cwd: Path, yes: bool) -> Observation:
+        repo_cwd = _resolve_project_cwd(cwd, str(args["cwd"]))
+        summary = summarize_git_diff(repo_cwd)
+        return Observation("git.diff_stat", True, f"Loaded git diff summary for {repo_cwd}.", {"summary": summary})
+
+    def _preview_git_log(self, args: dict[str, Any], cwd: Path) -> Observation:
+        return Observation("git.log", True, f"Read git log for {_resolve_project_cwd(cwd, str(args['cwd']))}.")
+
+    def _execute_git_log(self, args: dict[str, Any], cwd: Path, yes: bool) -> Observation:
+        repo_cwd = _resolve_project_cwd(cwd, str(args["cwd"]))
+        commits = git_log(repo_cwd, limit=int(args.get("limit", 10)))
+        return Observation("git.log", True, f"Loaded {len(commits)} commits for {repo_cwd}.", {"commits": commits})
+
+    def _preview_git_branch(self, args: dict[str, Any], cwd: Path) -> Observation:
+        return Observation("git.branch", True, f"Read current branch for {_resolve_project_cwd(cwd, str(args['cwd']))}.")
+
+    def _execute_git_branch(self, args: dict[str, Any], cwd: Path, yes: bool) -> Observation:
+        repo_cwd = _resolve_project_cwd(cwd, str(args["cwd"]))
+        branch = git_branch(repo_cwd)
+        return Observation("git.branch", True, f"Loaded branch for {repo_cwd}.", {"branch": branch})
+
+    def _preview_project_summarize_changes(self, args: dict[str, Any], cwd: Path) -> Observation:
+        return Observation("project.summarize_changes", True, f"Summarize project changes for {_resolve_project_cwd(cwd, str(args['cwd']))}.")
+
+    def _execute_project_summarize_changes(self, args: dict[str, Any], cwd: Path, yes: bool) -> Observation:
+        repo_cwd = _resolve_project_cwd(cwd, str(args["cwd"]))
+        summary = summarize_project_changes(repo_cwd)
+        return Observation("project.summarize_changes", True, f"Summarized project changes for {repo_cwd}.", {"summary": summary})
+
+    def _preview_project_draft_commit(self, args: dict[str, Any], cwd: Path) -> Observation:
+        return Observation("project.draft_commit", True, f"Draft commit message for {_resolve_project_cwd(cwd, str(args['cwd']))}.")
+
+    def _execute_project_draft_commit(self, args: dict[str, Any], cwd: Path, yes: bool) -> Observation:
+        repo_cwd = _resolve_project_cwd(cwd, str(args["cwd"]))
+        draft = draft_commit_message(repo_cwd)
+        return Observation("project.draft_commit", True, f"Drafted commit message for {repo_cwd}.", {"draft": draft})
+
+
+    def _preview_browser_domain_list(self, args: dict[str, Any], cwd: Path) -> Observation:
+        return Observation("browser.domain_list", True, "List enrolled browser domains.")
+
+    def _execute_browser_domain_list(self, args: dict[str, Any], cwd: Path, yes: bool) -> Observation:
+        domains = [{"domain_id": d.domain_id, "host": d.host, "revoked": d.revoked} for d in ApprovedDomainRegistry().list()]
+        return Observation("browser.domain_list", True, f"Found {len(domains)} enrolled domains.", {"domains": domains})
 
 
 def default_registry() -> ToolRegistry:

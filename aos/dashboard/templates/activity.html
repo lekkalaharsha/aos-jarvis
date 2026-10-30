@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Project &amp; Memory Activity{% endblock %}
+{% block content %}
+<h1>Project &amp; Memory Activity</h1>
+<h2>Memory Store Status</h2>
+<div class="kv">
+  <span class="label">Indexed audit events</span><span>{{ act.indexed_event_count }}</span>
+  <span class="label">Tracked entities</span><span>{{ act.entity_count }}</span>
+  <span class="label">Timeline entries</span><span>{{ act.timeline_count }}</span>
+  <span class="label">Last indexed event ID</span><span>{{ act.last_indexed_audit_event }}</span>
+  <span class="label">Schema version</span><span>{{ act.schema_version }}</span>
+</div>
+{% if act.timeline %}
+<h2>Recent Timeline</h2>
+<table>
+  <thead>
+    <tr><th>Timestamp</th><th>Category</th><th>Title</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+  {% for entry in act.timeline %}
+    <tr>
+      <td>{{ entry.timestamp }}</td>
+      <td>{{ entry.category }}</td>
+      <td>{{ entry.title }}</td>
+      <td>{{ entry.description }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No timeline entries available. Run <code>aos memory rebuild</code> to index.</p>
+{% endif %}
+{% endblock %}

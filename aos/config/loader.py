@@ -24,8 +24,16 @@ enabled = true
 
 def ensure_config(config_path: Path = CONFIG_PATH) -> Path:
     config_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        os.chmod(config_path.parent, 0o700)
+    except OSError:
+        pass
     if not config_path.exists():
         config_path.write_text(DEFAULT_CONFIG_TOML, encoding="utf-8")
+    try:
+        os.chmod(config_path, 0o600)
+    except OSError:
+        pass
     return config_path
 
 

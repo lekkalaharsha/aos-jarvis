@@ -8,7 +8,7 @@ Every future tool must implement:
 - `required_capabilities()`
 - `risk_tier()`
 
-Phase 4 adds a local memory system derived from the audit log. Browser, voice, dashboard, model routing, and autonomous tools remain inactive.
+Phase 6 adds safe configurable model support. Phase 7 adds the read-only local dashboard (`aos dashboard`). Browser, voice, screen tools, multi-agent systems, embeddings, and autonomous coding remain inactive.
 
 ## Risk Tiers
 
@@ -27,6 +27,8 @@ T3 - denied
 - read README inside approved project
 - show git status through the safe runner
 - recall recent memory from the derived store
+- show git branch, git log, and git diff stat through the safe runner
+- draft a commit message without modifying the repo
 
 ### T1
 
@@ -58,13 +60,44 @@ T3 - denied
 - `run.command`
 - `agent.ask`
 - `memory.read`
+- `git.status`
+- `git.diff`
+- `git.log`
+- `git.branch`
+- `project.summary`
+- `project.commit_draft`
+- `model.list`
+- `model.show`
+- `model.doctor`
+- `model.test`
+- `model.config`
+- `model.ask`
 
-All active capabilities require their existing path, command, registry, and audit checks. The memory system is derived from audit events and is not a privileged bypass around Phase 1, Phase 2, or Phase 3.
+## Phase 9 Workspace Capabilities (Active)
 
-## Phase 4 Memory Policy
+- `workspace.open` — T1, open approved project folder
+- `workspace.editor` — T1, launch VS Code in approved project
+- `workspace.terminal` — T1, launch terminal in approved project
+- `workspace.save` — T1, save workspace state
+- `workspace.restore` — T1, restore workspace state
+- `workspace.serve` — T2, start a foreground loopback dev server after explicit Human Owner confirmation
 
-- Memory is local-only and rebuildable from the audit log.
-- Memory queries are read-only T0 operations.
-- Recall is rule-based and grounded only in stored derived memory.
-- The agent may use only read-only memory tools for memory recall.
+All workspace operations require an enrolled project ID, pass PermissionEngine checks, and are audited with project IDs (never paths). Dev-server approval is opaque, expiring, single-use, and consumed durably before process launch. The supported stop method is `ctrl_c_foreground_terminal`; cross-invocation status/stop capabilities are not registered.
 
+All active capabilities require their existing path, command, registry, model-validation, and audit checks. The memory system is derived from audit events and is not a privileged bypass around Phase 1, Phase 2, or Phase 3. The git/project assistant is read-only and must route through the safe shell runner rather than raw subprocess execution. The model layer never executes tools directly.
+
+## Phase 5 Git Policy
+
+- Allowed git reads are limited to status, diff, diff stat, log, and current branch.
+- Blocked git operations include push, pull, fetch, clone, commit, reset, clean, checkout, switch, rebase, and merge.
+- Commit message drafting is deterministic and does not stage, commit, or modify repository state.
+- Agent git/project intents may use only allowlisted git/project tools.
+
+## Phase 6 Model Policy
+
+- Local model support is the default path.
+- Cloud model support is disabled by default.
+- Cloud API keys must come from environment variables, never config files.
+- Cloud prompts pass through secret redaction before provider transport.
+- Model output is untrusted and cannot create tools, override risk tiers, or bypass approval gates.
+- Structured model tool proposals must validate against the existing tool registry before any tool preview or execution.

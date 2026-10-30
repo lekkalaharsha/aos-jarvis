@@ -2,15 +2,21 @@ import os
 
 import pytest
 
-from aos.safety.errors import SymlinkEscapeBlocked
+from aos.tools import fs_tools
+from aos.safety.errors import DangerousPathBlocked, SymlinkEscapeBlocked
 from aos.tools.fs_tools import read_file, write_file
+
+
+@pytest.fixture(autouse=True)
+def isolated_phase1_audit(tmp_path, monkeypatch):
+    monkeypatch.setattr(fs_tools, "DEFAULT_AUDIT_PATH", tmp_path / "audit.db")
 
 
 def test_path_traversal_like_ssh_key_is_blocked(tmp_path):
     root = tmp_path / "project"
     root.mkdir()
 
-    with pytest.raises(Exception):
+    with pytest.raises(DangerousPathBlocked):
         read_file("../../.ssh/id_rsa", approved_roots=[root])
 
 

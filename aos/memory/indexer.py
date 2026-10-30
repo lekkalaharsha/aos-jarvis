@@ -10,12 +10,11 @@ from aos.memory.store import (
     add_timeline_entry,
     get_memory_status,
     init_memory_store,
-    list_memory_events,
     reset_memory_store,
     set_metadata,
     upsert_entity,
 )
-from aos.memory.types import MemoryEntity, MemoryEvent, TimelineEntry
+from aos.memory.types import MemoryEntity, MemoryEvent, MemoryStatus, TimelineEntry
 from aos.safety.audit import DEFAULT_AUDIT_PATH, append_event, list_events
 
 

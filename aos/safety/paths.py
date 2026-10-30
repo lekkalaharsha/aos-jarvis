@@ -93,7 +93,9 @@ def resolve_path(path: str | Path, base_dir: Path | None = None) -> Path:
 
 
 def resolve_roots(approved_roots: list[str | Path] | None = None) -> list[Path]:
-    roots = approved_roots or [Path.cwd()]
+    # ``None`` preserves legacy local-tool behaviour; an explicit empty list is
+    # a deny-all set and must never become an implicit cwd approval.
+    roots = [Path.cwd()] if approved_roots is None else approved_roots
     return [Path(root).expanduser().resolve(strict=False) for root in roots]
 
 
@@ -125,7 +127,9 @@ def check_dangerous_path(path: str | Path, resolved: Path | None = None) -> None
     if any(part in DANGEROUS_PARTS for part in parts):
         raise DangerousPathBlocked(f"blocked credential directory: {path}")
 
-    joined = "/".join(parts)
+    # Use normalized text as well as pathlib parts: on POSIX a Windows-shaped
+    # path is one Path component, but it must still hit Windows credential rules.
+    joined = "/".join(parts) + "/" + _normalize_for_rules(candidate)
     if any(marker in joined for marker in BROWSER_CREDENTIAL_PARTS):
         raise DangerousPathBlocked(f"blocked browser credential path: {path}")
     if any(marker in joined for marker in WINDOWS_CREDENTIAL_PARTS):
@@ -174,8 +178,10 @@ def validate_path(path: str | Path, approved_roots: list[str | Path] | None = No
     roots = resolve_roots(approved_roots)
     pre_resolved = _absolute_unresolved(path)
     resolved = resolve_path(path)
+    # Preserve the specific escape diagnostic even if an escaped target would
+    # independently be dangerous or secret-shaped.
+    ensure_no_symlink_escape(pre_resolved, roots)
     check_dangerous_path(path, resolved)
     check_secret_path(path, resolved)
-    ensure_no_symlink_escape(pre_resolved, roots)
     ensure_inside_approved_roots(resolved, roots)
     return resolved

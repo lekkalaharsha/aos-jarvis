@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Snapshot Metadata{% endblock %}
+{% block content %}
+<h1>Snapshot Metadata</h1>
+{% if rows %}
+<table>
+  <thead>
+    <tr>
+      <th>Snapshot ID</th><th>Original Path</th><th>Timestamp</th>
+      <th>SHA-256 (before)</th><th>Size (bytes)</th><th>Reason</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for row in rows %}
+    <tr>
+      <td>{{ row.snapshot_id }}</td>
+      <td>{{ row.original_path }}</td>
+      <td>{{ row.timestamp }}</td>
+      <td style="font-size:0.7rem">{{ row.sha256_before[:16] }}…</td>
+      <td>{{ row.size_bytes }}</td>
+      <td>{{ row.reason }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No snapshots found.</p>
+{% endif %}
+<p class="note">Snapshot restore is not available through this dashboard.</p>
+{% endblock %}

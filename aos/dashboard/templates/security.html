@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Security Events{% endblock %}
+{% block content %}
+<h1>Security Events</h1>
+{% if rows %}
+<table>
+  <thead>
+    <tr>
+      <th>ID</th><th>Timestamp</th><th>Actor</th><th>Event Type</th>
+      <th>Action</th><th>Resource</th><th>Risk</th><th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for row in rows %}
+    <tr>
+      <td>{{ row.id }}</td>
+      <td>{{ row.timestamp }}</td>
+      <td>{{ row.actor }}</td>
+      <td>{{ row.event_type }}</td>
+      <td>{{ row.action }}</td>
+      <td>{{ row.resource }}</td>
+      <td class="badge-{{ row.risk_tier | lower }}">{{ row.risk_tier }}</td>
+      <td class="badge-{{ row.status | lower }}">{{ row.status }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No security events (DENY/BLOCK) recorded yet.</p>
+{% endif %}
+<p class="note">Showing DENY/BLOCK/BLOCKED events and T3 risk tier (most recent {{ limit }}).</p>
+{% endblock %}

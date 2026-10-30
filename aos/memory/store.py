@@ -15,8 +15,16 @@ SCHEMA_VERSION = "phase4_v1"
 
 def _connect(db_path: Path) -> sqlite3.Connection:
     db_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        db_path.parent.chmod(0o700)
+    except OSError:
+        pass
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
+    try:
+        db_path.chmod(0o600)
+    except OSError:
+        pass
     return conn
 
 

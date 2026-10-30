@@ -63,6 +63,7 @@ READONLY_COMMANDS = {
     ("git", "status"),
     ("git", "diff"),
     ("git", "log"),
+    ("git", "branch", "--show-current"),
     ("python", "--version"),
     ("python3", "--version"),
     ("node", "--version"),
@@ -96,12 +97,57 @@ def _matches_prefix(argv: list[str], patterns: set[tuple[str, ...]]) -> bool:
 
 INLINE_EVAL_FLAGS = {"-c", "-e", "--eval"}
 INLINE_EVAL_COMMANDS = {"python", "python3", "node"}
+DENY_GIT_SUBCOMMANDS = {
+    "push",
+    "pull",
+    "fetch",
+    "clone",
+    "remote",
+    "commit",
+    "reset",
+    "clean",
+    "checkout",
+    "switch",
+    "rebase",
+    "merge",
+    "cherry-pick",
+    "stash",
+    "tag",
+    "submodule",
+    "config",
+}
+
+
+def _is_safe_git_status(argv: list[str]) -> bool:
+    return argv in (["git", "status"], ["git", "status", "--short"])
+
+
+def _is_safe_git_diff(argv: list[str]) -> bool:
+    return argv in (["git", "diff"], ["git", "diff", "--stat"])
+
+
+def _is_safe_git_log(argv: list[str]) -> bool:
+    if argv == ["git", "log"] or argv == ["git", "log", "--oneline"]:
+        return True
+    if len(argv) == 5 and argv[:3] == ["git", "log", "--oneline"] and argv[3] == "-n":
+        return argv[4].isdigit() and int(argv[4]) > 0
+    return False
+
+
+def _is_safe_git_branch(argv: list[str]) -> bool:
+    return argv == ["git", "branch", "--show-current"]
 
 
 def _deny_reason(argv: list[str]) -> str | None:
     first = argv[0].lower()
     if first in DENY_COMMANDS:
         return f"blocked command: {argv[0]}"
+    if first == "git":
+        if len(argv) < 2:
+            return "blocked incomplete git command"
+        subcommand = argv[1].lower()
+        if subcommand in DENY_GIT_SUBCOMMANDS:
+            return f"blocked git command: {argv[1]}"
     if first in INLINE_EVAL_COMMANDS and any(arg in INLINE_EVAL_FLAGS for arg in argv[1:]):
         return f"blocked inline code execution flag for {argv[0]}"
     joined = " ".join(item.lower() for item in argv)
@@ -115,6 +161,10 @@ def _deny_reason(argv: list[str]) -> str | None:
 
 
 def _classify_category(argv: list[str]) -> str:
+    if argv and argv[0] == "git":
+        if _is_safe_git_status(argv) or _is_safe_git_diff(argv) or _is_safe_git_log(argv) or _is_safe_git_branch(argv):
+            return "ALLOW_READONLY"
+        return "UNKNOWN"
     if _matches_prefix(argv, READONLY_COMMANDS):
         return "ALLOW_READONLY"
     if _matches_prefix(argv, PROJECT_TEST_COMMANDS):

@@ -45,6 +45,10 @@ def _compute_event_hash(payload_without_hash: dict, parent_hash: str) -> str:
 
 def init_audit_db(db_path: Path = DEFAULT_AUDIT_PATH) -> Path:
     db_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        db_path.parent.chmod(0o700)
+    except OSError:
+        pass
     with sqlite3.connect(db_path) as conn:
         conn.execute(
             """
@@ -64,6 +68,10 @@ def init_audit_db(db_path: Path = DEFAULT_AUDIT_PATH) -> Path:
             """
         )
         conn.commit()
+    try:
+        db_path.chmod(0o600)
+    except OSError:
+        pass
     return db_path
 
 

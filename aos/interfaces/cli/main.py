@@ -1,4 +1,4 @@
-"""AOS-Jarvis CLI with audit, config, eval, safe file tools, safe shell runner, minimal agent loop, and memory recall."""
+"""AOS-Jarvis CLI with audit, config, eval, safe tools, agent loop, memory, git, model support, read-only dashboard, and voice interface."""
 
 from __future__ import annotations
 
@@ -9,10 +9,10 @@ from rich.table import Table
 from aos import __version__
 from aos.config.loader import CONFIG_PATH, DATA_DIR, load_config
 from aos.evals.runner import run_fixtures
-from aos.interfaces.cli import ask_commands, fs_commands, memory_commands, run_commands, snapshot_commands
+from aos.interfaces.cli import ask_commands, browser_commands, dashboard_commands, fs_commands, git_commands, memory_commands, model_commands, run_commands, snapshot_commands, voice_commands, workspace_commands
 from aos.safety.audit import DEFAULT_AUDIT_PATH, append_event, init_audit_db, list_events, verify_chain
 
-app = typer.Typer(help="AOS-Jarvis CLI: audit, doctor, config, eval, safe file tools, safe shell runner, minimal agent loop, and memory recall.")
+app = typer.Typer(help="AOS-Jarvis CLI: audit, doctor, config, eval, safe tools, agent loop, memory, git, model support, dashboard, and voice interface.")
 audit_app = typer.Typer(help="Inspect and verify the audit log.")
 app.add_typer(audit_app, name="audit")
 eval_app = typer.Typer(help="Run Phase 0 evaluation fixtures.")
@@ -22,6 +22,12 @@ app.add_typer(config_app, name="config")
 app.add_typer(fs_commands.app, name="fs")
 app.add_typer(snapshot_commands.app, name="snapshot")
 app.add_typer(memory_commands.app, name="memory")
+app.add_typer(git_commands.app, name="git")
+app.add_typer(model_commands.app, name="model")
+app.add_typer(dashboard_commands.app, name="dashboard")
+app.add_typer(voice_commands.app, name="voice")
+app.add_typer(workspace_commands.app, name="workspace")
+app.add_typer(browser_commands.app, name="browser")
 app.command("run")(run_commands.run_cli)
 app.command("ask")(ask_commands.ask_cli)
 app.command("recall")(memory_commands.recall_cli)

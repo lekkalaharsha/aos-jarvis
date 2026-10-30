@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Model Provider Status{% endblock %}
+{% block content %}
+<h1>Model Provider Status</h1>
+<div class="kv">
+  <span class="label">Default provider</span><span>{{ data.default_provider }}</span>
+  <span class="label">Local available</span>
+  <span>{% if data.local_enabled %}<span class="badge-valid">YES</span>{% else %}<span class="badge-deny">NO</span>{% endif %}</span>
+  <span class="label">Cloud allowed in config</span>
+  <span>{% if data.allow_cloud %}<span class="badge-t2">YES</span>{% else %}<span class="badge-deny">NO (default)</span>{% endif %}</span>
+  <span class="label">Cloud operational</span>
+  <span>{% if data.cloud_enabled %}<span class="badge-t2">YES</span>{% else %}<span class="badge-deny">NO</span>{% endif %}</span>
+</div>
+<p class="note">API keys are not displayed. Cloud is disabled by default (ADR-0005).</p>
+{% endblock %}

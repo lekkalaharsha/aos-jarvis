@@ -41,3 +41,7 @@ class CommandPolicyBlocked(PermissionBlocked):
 
 class CommandExecutionFailed(SafetyError):
     """Raised when a shell command could not be started or completed safely."""
+
+
+class ProjectToolError(SafetyError):
+    """Raised when a project/git assistant action cannot complete safely."""
